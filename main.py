@@ -37,6 +37,14 @@ def generate_distance_table(cities):
     return table
 
 
+def get_fitness(route):
+    routeDistance = 0
+    for i in range(len(route)):
+        routeDistance += route[i].distance(route[(i+1) % 4])
+    return 1/routeDistance
+
+
+# List of all cities loaded from file
 cities = []
 
 f = open("wi29.txt")
@@ -53,4 +61,30 @@ pc = 0.8  # Crossover probability
 routes = []
 for i in range(populationSize):
     routes.append(random.sample(cities, len(cities)))
+
+# Get fitness of each route
+fitness = []
+for i in range(populationSize):
+    fitness.append(get_fitness(routes[i]))
+
+# Na razie ruletka, czytałem że rangowo-ruletkowa jest dobra
+# Get parents
+parents = []
+fitnessSum = sum(fitness)
+fitnessNormalized = [x / fitnessSum for x in fitness]
+
+# Sort fitness and corresponding routes in ascending order (lowest fitness/route first)
+fitnessNormalized, routes = (list(t) for t in zip(*sorted(zip(fitnessNormalized, routes))))
+distributionFunction = np.cumsum(fitnessNormalized)
+
+# Roulette
+for i in range(populationSize):
+    r = random.random()  # from 0 to 1
+    for j in range(len(fitnessNormalized)):
+        if r <= distributionFunction[j]:
+            parents.append(routes[j])
+            break
+
+# Teraz mamy 20 rodziców. Trzeba dobrać ich w pary i zrobić krzyżowanie i mutację, tak aby powstało 20 dzieci (nowa populacja)
+new_population = []
 
