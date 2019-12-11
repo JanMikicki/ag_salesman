@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import random
 import numpy as np
+import secrets
 # dj38 - djibouti
 # wi29 - western sahara
 
@@ -22,6 +23,9 @@ class City:
     def __repr__(self):
         return "(City " + str(self.id) + ")"
 
+    def __lt__(self, other):
+        return random.random() < random.random()
+
 
 def generate_distance_table(cities):
     table = np.zeros((totalCities, totalCities))
@@ -31,7 +35,8 @@ def generate_distance_table(cities):
             xDis = abs(curr_city.x - cities[j].x)
             yDis = abs(curr_city.y - cities[j].y)
             distance = np.sqrt((xDis ** 2) + (yDis ** 2))
-            table[i][j] = distance + random.randint(-5000, 5000)
+            variation = int(distance / 5)
+            table[i][j] = distance + random.randint(-variation, variation)
             if table[i][j] < 0:
                 table[i][j] = 0
     return table
@@ -40,7 +45,7 @@ def generate_distance_table(cities):
 def get_fitness(route):
     routeDistance = 0
     for i in range(len(route)):
-        routeDistance += route[i].distance(route[(i+1) % 4])
+        routeDistance += route[i].distance(route[(i+1) % totalCities])
     return 1/routeDistance
 
 
@@ -115,63 +120,84 @@ for i, line in enumerate(f):
 
 totalCities = len(cities)
 distanceTable = generate_distance_table(cities)
-populationSize = 20
+populationSize = 200
+iterations = 100
+eliteSize = int(populationSize / 5)
 pc = 0.8  # Crossover probability
+pm = 0.01  # Mutation probability
 
 # Initial population
 routes = []
 for i in range(populationSize):
     routes.append(random.sample(cities, len(cities)))
 
-# Get fitness of each route
-fitness = []
-for i in range(populationSize):
-    fitness.append(get_fitness(routes[i]))
+fittest_individuals = []  # For plotting
 
-# Na razie ruletka, czytałem że rangowo-ruletkowa jest dobra
-# Get parents
-parents = []
-fitnessSum = sum(fitness)
-fitnessNormalized = [x / fitnessSum for x in fitness]
+for n in range(iterations):
 
-# Sort fitness and corresponding routes in ascending order (lowest fitness/route first)
-fitnessNormalized, routes = (list(t) for t in zip(*sorted(zip(fitnessNormalized, routes))))
-distributionFunction = np.cumsum(fitnessNormalized)
+    # Get fitness of each route
+    fitness = []
+    for f in range(populationSize):
+        fitness.append(get_fitness(routes[f]))
 
-# Roulette
-for i in range(populationSize):
-    r = random.random()  # from 0 to 1
-    for j in range(len(fitnessNormalized)):
-        if r <= distributionFunction[j]:
-            parents.append(routes[j])
+    fittest_individuals.append(1/max(fitness))  # Remember shortest route for plotting
+
+    # Na razie ruletka, czytałem że rangowo-ruletkowa jest dobra
+    # Get parents
+    parents = []
+    fitnessSum = sum(fitness)
+    fitnessNormalized = [x / fitnessSum for x in fitness]
+
+    # Sort fitness and corresponding routes in ascending order (lowest fitness/route first)
+    fitnessNormalized, routes = (list(t) for t in zip(*sorted(zip(fitnessNormalized, routes))))
+    distributionFunction = np.cumsum(fitnessNormalized)
+
+    # Copy elite
+    for i in range(1, eliteSize + 1):
+        parents.append(routes[-i])
+
+    # Roulette
+    for i in range(eliteSize, populationSize):
+        r = float(secrets.randbelow(100)) / 100.  # from 0 to 0.99
+        for j in range(0, populationSize):
+            if r <= distributionFunction[j]:
+                parents.append(routes[j])
+                break
+
+    # Crossover
+    new_population = []
+    method = 'ox'
+
+    for i in range(int(populationSize / 2)):
+        # if random.random() >= pc:
+        #     continue
+        start = random.randint(0, totalCities - 1)
+        end = random.randint(0, totalCities - 1)
+        if end < start:
+            end, start = start, end
+
+        if method == 'ox':
+            new_population.append(ox_crossover(parents[2 * i], parents[2 * i + 1], totalCities, start, end))
+            new_population.append(ox_crossover(parents[2 * i + 1], parents[2 * i], totalCities, start, end))
+        elif method == 'pmx':
+            new_population.append(pmx_crossover(parents[2 * i], parents[2 * i + 1], totalCities, start, end))
+            new_population.append(pmx_crossover(parents[2 * i + 1], parents[2 * i], totalCities, start, end))
+        else:
+            print("no crossover method")
             break
 
-# Jakby sie chciało ręcznie sprawdzić czy dobrze sie krzyżują rodzice
-# print(parents[0])
-# print(parents[1])
-# print(ox_crossover(parents[0], parents[1], totalCities))
-# Test PMX z wartościami z linku
-# A = [8, 4, 7, 3, 6, 2, 5, 1, 9, 0]
-# B = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-# print(pmx_crossover(A, B, 10))
+    for new_member in new_population:
+        if float(secrets.randbelow(100)) / 100. < pm:
+            first_swap = random.randrange(totalCities)
+            second_swap = random.randrange(totalCities)
+            temp = new_member[first_swap]
+            new_member[first_swap] = new_member[second_swap]
+            new_member[second_swap] = temp
 
-# Teraz mamy 20 rodziców. Trzeba dobrać ich w pary i zrobić krzyżowanie i mutację, tak aby powstało 20 dzieci (nowa populacja)
-new_population = []
-method = 'ox'
+    routes = new_population
 
-for i in range(int(populationSize / 2)):
-    
-    start = random.randint(0, totalCities - 1)
-    end = random.randint(0, totalCities - 1)
-    if end < start:
-        end, start = start, end
 
-    if method == 'ox':
-        new_population.append(ox_crossover(parents[2 * i], parents[2 * i + 1], totalCities, start, end))
-        new_population.append(ox_crossover(parents[2 * i + 1], parents[2 * i], totalCities, start, end))
-    elif method == 'pmx':
-        new_population.append(pmx_crossover(parents[2 * i], parents[2 * i + 1], totalCities, start, end))
-        new_population.append(pmx_crossover(parents[2 * i + 1], parents[2 * i], totalCities, start, end))
-    else:
-        print("nie ma metody")
-        break
+plt.plot(fittest_individuals)
+plt.xlabel("iteracja")
+plt.ylabel("najlepszy dystans")
+plt.show()
