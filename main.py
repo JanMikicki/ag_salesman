@@ -46,14 +46,10 @@ def get_fitness(route):
 
 # Krzyżowanie OX -> https://intellipaat.com/community/21890/order-crossover-ox-genetic-algorithm
 # length -> ilość miast w badanym kraju, start i end to pierwsza i ostatnia pozycja z kroku 1. w linku
-def ox_crossover(parent1, parent2, length):
+def ox_crossover(parent1, parent2, length, start, end):
 
     # Przekopiowanie losowego fragmentu parent1 do dziecka
     child = [1000] * length
-    start = random.randint(0, length - 1)
-    end = random.randint(0, length - 1)
-    if end < start:
-        end, start = start, end
     for i in range(start, end + 1):
         child[i] = parent1[i]
 
@@ -72,14 +68,10 @@ def ox_crossover(parent1, parent2, length):
 
 
 # Krzyżowanie PMX -> http://www.rubicite.com/Tutorials/GeneticAlgorithms/CrossoverOperators/PMXCrossoverOperator.aspx/
-def pmx_crossover(parent1, parent2, length):
+def pmx_crossover(parent1, parent2, length, start, end):
 
     # KROK 1 Przekopiowanie losowego fragmentu parent1 do dziecka
     child = [1000] * length
-    start = random.randint(0, length - 1)
-    end = random.randint(0, length - 1)
-    if end < start:
-        end, start = start, end
     for i in range(start, end + 1):
         child[i] = parent1[i]
 
@@ -168,12 +160,18 @@ new_population = []
 method = 'ox'
 
 for i in range(int(populationSize / 2)):
+    
+    start = random.randint(0, totalCities - 1)
+    end = random.randint(0, totalCities - 1)
+    if end < start:
+        end, start = start, end
+
     if method == 'ox':
-        new_population.append(ox_crossover(parents[2 * i], parents[2 * i + 1], totalCities))
-        new_population.append(ox_crossover(parents[2 * i + 1], parents[2 * i], totalCities))
+        new_population.append(ox_crossover(parents[2 * i], parents[2 * i + 1], totalCities, start, end))
+        new_population.append(ox_crossover(parents[2 * i + 1], parents[2 * i], totalCities, start, end))
     elif method == 'pmx':
-        new_population.append(pmx_crossover(parents[2 * i], parents[2 * i + 1], totalCities))
-        new_population.append(pmx_crossover(parents[2 * i + 1], parents[2 * i], totalCities))
+        new_population.append(pmx_crossover(parents[2 * i], parents[2 * i + 1], totalCities, start, end))
+        new_population.append(pmx_crossover(parents[2 * i + 1], parents[2 * i], totalCities, start, end))
     else:
         print("nie ma metody")
         break
