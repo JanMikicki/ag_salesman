@@ -113,7 +113,7 @@ def pmx_crossover(parent1, parent2, length, start, end):
 # List of all cities loaded from file
 cities = []
 
-f = open("wi29.txt")
+f = open("dj38.txt")
 for i, line in enumerate(f):
     line = line.split()
     cities.append(City(float(line[1]), float(line[2]), i))
@@ -121,8 +121,8 @@ for i, line in enumerate(f):
 totalCities = len(cities)
 distanceTable = generate_distance_table(cities)
 populationSize = 200
-iterations = 100
-eliteSize = int(populationSize / 5)
+iterations = 200
+eliteSize = int(populationSize / 4)
 pc = 0.8  # Crossover probability
 pm = 0.01  # Mutation probability
 
@@ -132,8 +132,9 @@ for i in range(populationSize):
     routes.append(random.sample(cities, len(cities)))
 
 fittest_individuals = []  # For plotting
+fitness_average = []
 
-for n in range(iterations):
+for n in range(iterations + 1):
 
     # Get fitness of each route
     fitness = []
@@ -141,11 +142,15 @@ for n in range(iterations):
         fitness.append(get_fitness(routes[f]))
 
     fittest_individuals.append(1/max(fitness))  # Remember shortest route for plotting
+    indx_max = np.argmax(fitness)
+    final_route = routes[indx_max]
 
     # Na razie ruletka, czytałem że rangowo-ruletkowa jest dobra
     # Get parents
     parents = []
     fitnessSum = sum(fitness)
+    fitnessAverage = fitnessSum/populationSize
+    fitness_average.append(fitnessAverage)
     fitnessNormalized = [x / fitnessSum for x in fitness]
 
     # Sort fitness and corresponding routes in ascending order (lowest fitness/route first)
@@ -197,7 +202,34 @@ for n in range(iterations):
     routes = new_population
 
 
-plt.plot(fittest_individuals)
-plt.xlabel("iteracja")
-plt.ylabel("najlepszy dystans")
+fig, ax1 = plt.subplots()
+color = 'tab:red'
+ax1.set_xlabel("iteracja")
+ax1.set_ylabel('najlepszy dystans', color=color)
+ax1.plot(fittest_individuals, color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+ax1.ticklabel_format(axis='y', style='sci', scilimits=(1, 2))
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+color = 'tab:blue'
+ax2.set_ylabel('średnie przystosowanie', color=color)  # we already handled the x-label with ax1
+ax2.plot(fitness_average, color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+ax2.ticklabel_format(axis='y', style='sci', scilimits=(-1, 0))
+
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+plt.figure()
+cities_x = [city.x for city in cities]
+cities_y = [city.y for city in cities]
+plt.scatter(cities_x, cities_y)
+final_route.append(final_route[0])  # Append first element to the end so it will plot the entire route
+route_x = [city.x for city in final_route]
+route_y = [city.y for city in final_route]
+plt.plot(route_x, route_y)
 plt.show()
+
+# plt.plot(fittest_individuals)
+# plt.xlabel("iteracja")
+# plt.ylabel("najlepszy dystans")
+# plt.show()
